@@ -21,34 +21,35 @@ struct BitcoinCashWalletAssembly: WalletManagerAssembly {
             bip: .bip44
         )
 
-        let txBuilder = BitcoinTransactionBuilder(bitcoinManager: bitcoinManager, addresses: input.wallet.addresses)
+        let unspentOutputManager = CommonUnspentOutputManager()
+        let txBuilder = BitcoinTransactionBuilder(
+            bitcoinManager: bitcoinManager,
+            unspentOutputManager: unspentOutputManager,
+            addresses: input.wallet.addresses
+        )
 
         // TODO: Add testnet support.
         // Maybe https://developers.cryptoapis.io/technical-documentation/general-information/what-we-support
-        let providers: [AnyBitcoinNetworkProvider] = input.apiInfo.reduce(into: []) { partialResult, providerType in
+        let providers: [UTXONetworkProvider] = input.apiInfo.reduce(into: []) { partialResult, providerType in
             switch providerType {
             case .nowNodes:
-                if let addressService = AddressServiceFactory(
-                    blockchain: input.blockchain
-                ).makeAddressService() as? BitcoinCashAddressService {
+                if let addressService = AddressServiceFactory(blockchain: input.blockchain).makeAddressService() as? BitcoinCashAddressService {
                     partialResult.append(
                         networkProviderAssembly.makeBitcoinCashBlockBookUTXOProvider(
                             with: input,
                             for: .nowNodes,
                             bitcoinCashAddressService: addressService
-                        ).eraseToAnyBitcoinNetworkProvider()
+                        )
                     )
                 }
             case .getBlock:
-                if let addressService = AddressServiceFactory(
-                    blockchain: input.blockchain
-                ).makeAddressService() as? BitcoinCashAddressService {
+                if let addressService = AddressServiceFactory(blockchain: input.blockchain).makeAddressService() as? BitcoinCashAddressService {
                     partialResult.append(
                         networkProviderAssembly.makeBitcoinCashBlockBookUTXOProvider(
                             with: input,
                             for: .getBlock,
                             bitcoinCashAddressService: addressService
-                        ).eraseToAnyBitcoinNetworkProvider()
+                        )
                     )
                 }
             case .blockchair:
@@ -64,6 +65,6 @@ struct BitcoinCashWalletAssembly: WalletManagerAssembly {
         }
 
         let networkService = BitcoinCashNetworkService(providers: providers)
-        return BitcoinWalletManager(wallet: input.wallet, txBuilder: txBuilder, networkService: networkService)
+        return BitcoinWalletManager(wallet: input.wallet, txBuilder: txBuilder, unspentOutputManager: unspentOutputManager, networkService: networkService)
     }
 }
