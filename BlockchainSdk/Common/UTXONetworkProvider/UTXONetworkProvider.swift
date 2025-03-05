@@ -10,12 +10,15 @@ import Foundation
 import Combine
 
 protocol UTXONetworkProvider: AnyObject, HostProvider {
+    associatedtype Fee
+    associatedtype Transaction
+
     func getInfo(address: String) -> AnyPublisher<UTXOResponse, Error>
     func getUnspentOutputs(address: String) -> AnyPublisher<[UnspentOutput], Error>
     func getTransactionInfo(hash: String, address: String) -> AnyPublisher<TransactionRecord, Error>
 
-    func getFee() -> AnyPublisher<UTXOFee, Error>
-    func send(transaction: String) -> AnyPublisher<TransactionSendResult, Error>
+    func getFee() -> AnyPublisher<Fee, Error>
+    func send(transaction: Transaction) -> AnyPublisher<TransactionSendResult, Error>
 }
 
 extension UTXONetworkProvider {

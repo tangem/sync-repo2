@@ -10,6 +10,7 @@ import Foundation
 import Combine
 import TangemNetworkUtils
 
+/// https://api.kaspa.org/docs#/
 class KaspaNetworkProvider: HostProvider {
     var host: String {
         url.hostOrUnknown
@@ -50,8 +51,41 @@ class KaspaNetworkProvider: HostProvider {
     func feeEstimate() -> AnyPublisher<KaspaFeeEstimateResponse, Error> {
         requestPublisher(for: .feeEstimate)
     }
+}
 
-    private func requestPublisher<T: Decodable>(for request: KaspaTarget.Request) -> AnyPublisher<T, Error> {
+// MARK: - UTXONetworkProvider
+
+extension KaspaNetworkProvider: UTXONetworkProvider {
+    func getUnspentOutputs(address: String) -> AnyPublisher<[UnspentOutput], any Error> {
+        requestPublisher(for: .utxos(address: address))
+            .withWeakCaptureOf(self)
+            .map { $0.mapToUnspentOutputs(outputs: $1) }
+            .eraseToAnyPublisher()
+    }
+
+    func getTransactionInfo(hash: String, address: String) -> AnyPublisher<TransactionRecord, any Error> {
+        requestPublisher(for: .transaction(hash: address))
+        .withWeakCaptureOf(self)
+        .tryMap { try $0.mapToTransactionRecord(transaction: $1, address: address) }
+        .eraseToAnyPublisher()
+    }
+
+    func getFee() -> AnyPublisher<KaspaDTO.EstimateFee.Response, any Error> {
+        requestPublisher(for: .feeEstimate)
+    }
+
+    func send(transaction: KaspaTransactionRequest) -> AnyPublisher<TransactionSendResult, any Error> {
+        requestPublisher(for: .transactions(transaction: transaction))
+            .withWeakCaptureOf(self)
+            .map { $0.mapToTransactionSendResult(transaction: $1) }
+            .eraseToAnyPublisher()
+    }
+}
+
+// MARK: - Private
+
+private extension KaspaNetworkProvider {
+    func requestPublisher<T: Decodable>(for request: KaspaTarget.Request) -> AnyPublisher<T, Error> {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
@@ -65,5 +99,34 @@ class KaspaNetworkProvider: HostProvider {
                 return moyaError
             }
             .eraseToAnyPublisher()
+    }
+}
+
+// MARK: - Mapping
+
+private extension KaspaNetworkProvider {
+    func mapToUnspentOutputs(outputs: [KaspaDTO.UTXO.Response]) -> [UnspentOutput] {
+        outputs.compactMap { output in
+            Decimal(stringValue: output.utxoEntry.amount).map { amount in
+                UnspentOutput(
+                    blockId: output.utxoEntry.blockDaaScore.flatMap { Int($0) } ?? -1,
+                    hash: output.outpoint.transactionId,
+                    index: output.outpoint.index,
+                    amount: amount.uint64Value
+                )
+            }
+        }
+    }
+
+    func mapToTransactionRecord(
+        transaction: KaspaDTO.TransactionInfo.Response,
+        address: String
+    ) throws -> TransactionRecord {
+        try KaspaTransactionRecordMapper(blockchain: .kaspa(testnet: false))
+            .mapToTransactionRecord(transaction: transaction, address: address)
+    }
+
+    func mapToTransactionSendResult(transaction: KaspaDTO.Send.Response) -> TransactionSendResult {
+        TransactionSendResult(hash: transaction.transactionId)
     }
 }
