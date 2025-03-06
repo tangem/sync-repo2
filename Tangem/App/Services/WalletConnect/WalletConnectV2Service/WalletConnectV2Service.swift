@@ -172,7 +172,7 @@ final class WalletConnectV2Service {
         } catch {
             displayErrorUI(WalletConnectV2Error.pairClientError(error.localizedDescription))
             WCLogger.error("Failed to connect to \(url)", error: error)
-            Analytics.log(event: .walletConnectSessionFailed)
+            Analytics.log(.walletConnectSessionFailed)
 
             // Hack to delete the topic from the user default storage inside the WC 2.0 SDK
             await disconnect(topic: url.topic)
@@ -301,6 +301,7 @@ final class WalletConnectV2Service {
                 walletModelProvider: infoProvider.wcWalletModelProvider
             )
             displaySessionConnectionUI(for: proposal, namespaces: sessionNamespaces)
+            logDAppConnectionRequested(namespaces: sessionNamespaces)
         } catch let error as WalletConnectV2Error {
             displayErrorUI(error)
         } catch {
@@ -347,31 +348,32 @@ final class WalletConnectV2Service {
     // MARK: - Session manipulation
 
     private func sessionAccepted(with id: String, namespaces: [String: SessionNamespace]) {
-        runTask { [weak self] in
-            guard let self else { return }
-
+        TangemFoundation.runTask(in: self) { strongSelf in
             do {
                 WCLogger.info("Namespaces to approve for session connection: \(namespaces)")
                 _ = try await WalletKit.instance.approve(proposalId: id, namespaces: namespaces)
+                await strongSelf.logDAppConnected(sessionId: id, namespaces: namespaces)
             } catch let error as WalletConnectV2Error {
-                self.displayErrorUI(error)
+                strongSelf.displayErrorUI(error)
+                await strongSelf.logDAppConnectionFailed(sessionId: id, namespaces: namespaces)
             } catch {
                 let mappedError = WalletConnectV2ErrorMappingUtils().mapWCv2Error(error)
-                displayErrorUI(mappedError)
+                strongSelf.displayErrorUI(mappedError)
                 WCLogger.error("Failed to approve Session", error: error)
+                await strongSelf.logDAppConnectionFailed(sessionId: id, namespaces: namespaces)
             }
         }
     }
 
     private func sessionRejected(with proposal: Session.Proposal) {
-        runTask { [weak self] in
+        TangemFoundation.runTask(in: self) { strongSelf in
             do {
                 try await WalletKit.instance.rejectSession(proposalId: proposal.id, reason: .userRejected)
                 WCLogger.info("User reject WC connection")
             } catch {
                 WCLogger.error("Failed to reject WC connection", error: error)
             }
-            self?.canEstablishNewSessionSubject.send(true)
+            strongSelf.canEstablishNewSessionSubject.send(true)
         }
     }
 
@@ -462,9 +464,11 @@ final class WalletConnectV2Service {
             await respond(with: wcError, session: session, blockchainCurrencySymbol: targetBlockchain.currencySymbol)
         }
     }
+}
 
-    // MARK: - Utils
+// MARK: - Analytics related methods
 
+extension WalletConnectV2Service {
     private func logAnalytics(
         request: Request,
         session: WalletConnectSavedSession?,
@@ -499,7 +503,52 @@ final class WalletConnectV2Service {
             params[.errorCode] = "0"
         }
 
+        // TODO: @alobankov, Signature Request Handled
         Analytics.log(event: .requestHandled, params: params)
+    }
+
+    private func logDAppConnectionRequested(namespaces: [String: SessionNamespace]) {
+        guard let infoProvider else { return }
+
+        let blockchainNames = WalletConnectV2Utils()
+            .getBlockchainNamesFromNamespaces(namespaces, walletModelProvider: infoProvider.wcWalletModelProvider)
+            .joined(separator: ",")
+
+        let event = Analytics.Event.walletConnectDAppConnectionRequested
+        let params: [Analytics.ParameterKey: String] = [
+            .networks: blockchainNames,
+        ]
+
+        Analytics.log(event: event, params: params)
+    }
+
+    private func logDAppConnected(sessionId: String, namespaces: [String: SessionNamespace]) async {
+        await logDAppConnectionStatusEvent(event: .walletConnectDAppConnected, sessionId: sessionId, namespaces: namespaces)
+    }
+
+    private func logDAppConnectionFailed(sessionId: String, namespaces: [String: SessionNamespace]) async {
+        await logDAppConnectionStatusEvent(event: .walletConnectDAppConnectionFailed, sessionId: sessionId, namespaces: namespaces)
+    }
+
+    private func logDAppConnectionStatusEvent(
+        event: Analytics.Event,
+        sessionId: String,
+        namespaces: [String: SessionNamespace]
+    ) async {
+        guard let infoProvider else { return }
+        guard let session = await sessionsStorage.session(with: sessionId) else { return }
+
+        let blockchainNames = WalletConnectV2Utils()
+            .getBlockchainNamesFromNamespaces(namespaces, walletModelProvider: infoProvider.wcWalletModelProvider)
+            .joined(separator: ",")
+
+        let params: [Analytics.ParameterKey: String] = [
+            .dAppName: session.sessionInfo.dAppInfo.name,
+            .dAppUrl: session.sessionInfo.dAppInfo.url,
+            .blockchain: blockchainNames,
+        ]
+
+        Analytics.log(event: event, params: params)
     }
 }
 
