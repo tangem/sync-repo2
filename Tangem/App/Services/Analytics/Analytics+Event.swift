@@ -144,11 +144,16 @@ extension Analytics {
         case walletConnectScreenOpened = "[Wallet Connect] WC Screen Opened"
         case walletConnectSessionInitiated = "[Wallet Connect] Session Initiated"
         case walletConnectSessionFailed = "[Wallet Connect] Session Failed"
+
         case walletConnectDAppConnectionRequested = "[Wallet Connect] dApp Connection Requested"
         case walletConnectDAppConnected = "[Wallet Connect] dApp Connected"
         case walletConnectDAppConnectionFailed = "[Wallet Connect] dApp Connection Failed"
-        case sessionDisconnected = "[Wallet Connect] Session Disconnected"
-        case requestHandled = "[Wallet Connect] Request Handled"
+        case walletConnectDAppDisconnected = "[Wallet Connect] dApp Disconnected"
+
+        case walletConnectSignatureRequestReceived = "[Wallet Connect] Signature Request Received"
+        case walletConnectSignatureRequestHandled = "[Wallet Connect] Signature Request Handled"
+        case walletConnectSignatureRequestFailed = "[Wallet Connect] Signature Request Failed"
+
         case chatScreenOpened = "[Chat] Chat Screen Opened"
         case settingsScreenOpened = "[Settings] Settings Screen Opened"
 
