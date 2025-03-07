@@ -58,6 +58,7 @@ private extension TotalBalanceProvider {
         let hasEntriesWithoutDerivationPublisher = derivationManager?.hasPendingDerivations ?? .just(output: false)
         let balanceStatePublisher = walletModelsManager
             .walletModelsPublisher
+            .removeDuplicates()
             .receive(on: DispatchQueue.global())
             .withWeakCaptureOf(self)
             .flatMapLatest { balanceProvider, walletModels in

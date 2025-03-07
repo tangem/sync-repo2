@@ -63,14 +63,6 @@ enum WalletModelState: Hashable, CustomStringConvertible {
         case .failed(let error): "Failed \(error)"
         }
     }
-//    fileprivate var canCreateOrPurgeWallet: Bool {
-//        switch self {
-//        case .failed, .loading, .created:
-//            return false
-//        case .noAccount, .loaded:
-//            return true
-//        }
-//    }
 }
 
 enum WalletManagerUpdateResult: Hashable {

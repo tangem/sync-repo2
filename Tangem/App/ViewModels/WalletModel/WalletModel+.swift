@@ -7,13 +7,8 @@
 //
 
 import Foundation
+import Combine
 import TangemFoundation
-
-extension WalletModel {
-    static func == (lhs: any WalletModel, rhs: any WalletModel) -> Bool {
-        return lhs.id == rhs.id
-    }
-}
 
 extension WalletModel {
     func hash(into hasher: inout Hasher) {
@@ -33,5 +28,23 @@ extension WalletModel {
                 "tokenItem": "\(tokenItem.name) (\(tokenItem.networkName))",
             ]
         )
+    }
+}
+
+extension Publisher where Output == [any WalletModel] {
+    func removeDuplicates() -> some Publisher<Output, Failure> {
+        removeDuplicates(by: { prev, new in
+            guard prev.count == new.count else {
+                return false
+            }
+
+            for (prevModel, newModel) in Swift.zip(prev, new) {
+                guard prevModel.id == newModel.id else {
+                    return false
+                }
+            }
+
+            return true
+        })
     }
 }

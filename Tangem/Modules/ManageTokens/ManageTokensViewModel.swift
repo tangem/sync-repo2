@@ -120,6 +120,7 @@ class ManageTokensViewModel: ObservableObject {
             .store(in: &bag)
 
         walletModelsManager.walletModelsPublisher
+            .removeDuplicates()
             .withWeakCaptureOf(self)
             .map { viewModel, walletModels in
                 viewModel.prepareCustomTokensList(from: walletModels)

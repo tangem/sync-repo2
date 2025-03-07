@@ -12,7 +12,12 @@ import BlockchainSdk
 import TangemExpress
 import TangemStaking
 
-protocol WalletModel: AnyObject, Equatable, Identifiable, Hashable, CustomStringConvertible, AvailableTokenBalanceProviderInput, WalletModelUpdater, WalletModelBalancesProvider, WalletModelHelpers, WalletModelFeeProvider, WalletModelDependenciesProvider, WalletModelTransactionHistoryProvider, WalletModelRentProvider, TransactionHistoryFetcher, ExpressWallet, StakingTokenBalanceProviderInput, FiatTokenBalanceProviderInput, ExistentialDepositInfoProvider {
+protocol WalletModel:
+    AnyObject, Identifiable, Hashable, CustomStringConvertible,
+    AvailableTokenBalanceProviderInput, WalletModelUpdater, WalletModelBalancesProvider,
+    WalletModelHelpers, WalletModelFeeProvider, WalletModelDependenciesProvider,
+    WalletModelTransactionHistoryProvider, WalletModelRentProvider, TransactionHistoryFetcher,
+    ExpressWallet, StakingTokenBalanceProviderInput, FiatTokenBalanceProviderInput, ExistentialDepositInfoProvider {
     var id: WalletModelId { get }
     var name: String { get }
     var wallet: Wallet { get }

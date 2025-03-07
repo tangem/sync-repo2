@@ -6,9 +6,7 @@
 //  Copyright © 2025 Tangem AG. All rights reserved.
 //
 
-import Foundation
-
-struct WalletModelId: Hashable, Identifiable, Equatable {
+struct WalletModelId: Hashable, Identifiable {
     let id: String
     let tokenItem: TokenItem
 
