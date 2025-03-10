@@ -14,8 +14,8 @@ struct WalletModelId: Hashable, Identifiable {
         self.tokenItem = tokenItem
 
         let network = tokenItem.networkId
-        let contract = tokenItem.contractAddress ?? "coin"
-        let path = tokenItem.blockchainNetwork.derivationPath?.rawPath ?? "no_derivation"
+        let contract = tokenItem.contractAddress?.nilIfEmpty ?? "coin"
+        let path = tokenItem.blockchainNetwork.derivationPath?.rawPath.nilIfEmpty ?? "no_derivation"
         id = "\(network)_\(contract)_\(path)"
     }
 }
